@@ -1,0 +1,3 @@
+PyYAML
+git+git://github.com/AdamStrojek/libetrv.git
+paho-mqtt
