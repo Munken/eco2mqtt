@@ -38,15 +38,24 @@ class MqttThermostat:
 
     def __init__(self, thermostat: Thermostat):
         self.thermostat = thermostat
+        self.id = thermostat.addr.replace(":", "")
 
-        base = "munk/etrv/{}".format(thermostat.addr)
+        base = "munk/etrv/{}".format(self.id)
         # base = "munk/etrv"
 
-        self.pub = {
-            "away_state":   "away_mode/state",
-            "mode_state":   "mode/state",
-            "temp_state":   "temp/state",
-            "temp_cur":     "temp/current",
+        # self.pub = {
+        #     "away_state":   "away_mode/state",
+        #     "mode_state":   "mode/state",
+        #     "temp_state":   "temp/state",
+        #     "temp_cur":     "temp/current",
+        # }
+
+        self.pub = "{}/state".format(base)
+        self.state = {
+            "away_mode": "",
+            "mode": "heat",
+            "target_temp": self.thermostat._set_point,
+            "current_temp": self.thermostat._set_point,
         }
 
         self.sub = {
@@ -59,8 +68,8 @@ class MqttThermostat:
         for key, (topic, f) in self.sub.items():
             self.sub[key] = ("{}/{}".format(base, topic), f)
 
-        for key, val in self.pub.items():
-            self.pub[key] = "{}/{}".format(base, val)
+        # for key, val in self.pub.items():
+        #     self.pub[key] = "{}/{}".format(base, val)
 
     def _on_connect(self, client, userdata, flags, rc):
         logger.info("{} connect", self.thermostat.addr)
@@ -78,35 +87,44 @@ class MqttThermostat:
     def _on_away_command(self, client, message):
         logger.debug("away {}", message.payload)
 
-        s = message.payload.decode('ascii').lower()
+        mode = message.payload.decode('ascii')
+        self.state["away_mode"] = mode
 
         # if s == 'on':
         #     self.thermostat.set_point = self.thermostat._away_temp
+        self._publish_state(client)
 
     def _on_mode_command(self, client, message):
         logger.debug("mode {}", message.payload)
 
-        # mode = message.payload.decode('ascii')
+        mode = message.payload.decode('ascii')
+        self.state["mode"] = mode
+        self._publish_state(client)
 
     def _on_temp_command(self, client, message):
         logger.debug("tcmd {}", message.payload)
 
         t = float(message.payload.decode('ascii'))
         # self.thermostat.set_point = t
-        self._publish_temp_state(client, t)
+        self.state["target_temp"] = t
+        self._publish_state(client)
 
     def _on_temp_remote(self, client, message):
         logger.debug("remote {}", message.payload)
 
         t = float(message.payload.decode('ascii'))
         # self.thermostat.add_remote(t)
-        self._publish_temp_cur(client, t)
+        self.state["current_temp"] = t
+        self._publish_state(client)
 
-    def _publish_temp_cur(self, client, temp):
-        self._publish(client, "temp_cur", str(temp))
+    # def _publish_temp_cur(self, client, temp):
+    #     self._publish(client, "temp_cur", str(temp))
+    #
+    # def _publish_temp_state(self, client, temp):
+    #     self._publish(client, "temp_state", str(temp))
 
-    def _publish_temp_state(self, client, temp):
-        self._publish(client, "temp_state", str(temp))
+    def _publish_state(self, client: mqtt.Client):
+        client.publish(self.pub, payload=json.dumps(self.state))
 
     def _publish(self, client: mqtt.Client, key, payload):
         client.publish(self.pub[key], payload=payload)
@@ -118,17 +136,21 @@ class MqttThermostat:
         initial = self.thermostat._set_point
         discovery = {
             "away_mode_command_topic":    self.sub["away_command"][0],
-            "away_mode_state_topic":      self.pub["away_state"],
-            "current_temperature_topic":  self.pub["temp_cur"],
-            "initial": initial,
+            "away_mode_state_topic":      self.pub,
+            "away_mode_state_template":   '{{ value_json["away_mode"]}}',
+            "curr_temp_t":                self.pub,
+            "curr_temp_tpl":              '{{ value_json["current_temp"]}}',
+            "initial":                    initial,
             "max_temp":                   30,
             "min_temp":                    5,
             "mode_command_topic":         self.sub["mode_command"][0],
-            "mode_state_topic":           self.pub["mode_state"],
+            "mode_stat_t":                self.pub,
+            "mode_stat_tpl":              '{{ value_json["mode"]}}',
             "modes":                      ["heat", "off"],
             "name":                       self.thermostat.name,
             "temperature_command_topic":  self.sub["temp_command"][0],
-            "temperature_state_topic":    self.pub["temp_state"],
+            "temp_stat_t":                self.pub,
+            "temp_stat_tpl":              '{{ value_json["target_temp"]}}',
             "temp_step":                  0.5
         }
 
@@ -138,5 +160,5 @@ class MqttThermostat:
         client.publish(sub)
         client.publish(sub, json_str)
 
-        self._publish_temp_state(client, initial)
-        self._publish_temp_cur(client, initial)
+        # self._publish_state(client)
+
