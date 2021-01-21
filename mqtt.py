@@ -124,7 +124,7 @@ class MqttThermostat:
     #     self._publish(client, "temp_state", str(temp))
 
     def _publish_state(self, client: mqtt.Client):
-        client.publish(self.pub, payload=json.dumps(self.state))
+        client.publish(self.pub, payload=json.dumps(self.state), retain=True)
 
     def _publish(self, client: mqtt.Client, key, payload):
         client.publish(self.pub[key], payload=payload)
@@ -160,5 +160,5 @@ class MqttThermostat:
         client.publish(sub)
         client.publish(sub, json_str)
 
-        # self._publish_state(client)
+        self._publish_state(client)
 
