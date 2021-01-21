@@ -105,7 +105,7 @@ class MqttThermostat:
         logger.debug("tcmd {}", message.payload)
 
         t = float(message.payload.decode('ascii'))
-        # self.thermostat.set_point = t
+        self.thermostat.set_point = t
         self.state["target_temp"] = t
         self._publish_state(client)
 
@@ -113,15 +113,9 @@ class MqttThermostat:
         logger.debug("remote {}", message.payload)
 
         t = float(message.payload.decode('ascii'))
-        # self.thermostat.add_remote(t)
+        self.thermostat.add_remote(t)
         self.state["current_temp"] = t
         self._publish_state(client)
-
-    # def _publish_temp_cur(self, client, temp):
-    #     self._publish(client, "temp_cur", str(temp))
-    #
-    # def _publish_temp_state(self, client, temp):
-    #     self._publish(client, "temp_state", str(temp))
 
     def _publish_state(self, client: mqtt.Client):
         client.publish(self.pub, payload=json.dumps(self.state), retain=True)
