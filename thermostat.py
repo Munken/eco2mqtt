@@ -7,7 +7,7 @@ HOUR = 60 * 60
 
 class Thermostat:
 
-    def __init__(self, name, addr, secret, set_point, offset):
+    def __init__(self, name, addr, secret, set_point, offset, away_temp):
         self.secret = secret
         self.addr = addr
         self.name = name
@@ -17,6 +17,7 @@ class Thermostat:
         self._remote_t = []
         self._set_point = set_point
         self._offset = offset
+        self._away_temp = away_temp
         self._last_change = time.time()
 
     @property

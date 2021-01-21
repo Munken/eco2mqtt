@@ -22,6 +22,7 @@ class CLI:
     def __init__(self, settings):
         with open(settings) as f:
             raw = safe_load(f)
+
             parsed = {}
             for thermo in raw["thermostats"]:
                 name = thermo["name"]
@@ -29,9 +30,11 @@ class CLI:
                 secret = bytes.fromhex(thermo["secret"])
                 set_point = float(thermo["set_point"])
                 offset = float(thermo["offset"])
+                away_temp = float(thermo["away_temp"])
 
                 parsed[addr] = Thermostat(name=name, addr=addr, secret=secret,
-                                          set_point=set_point, offset=offset)
+                                          set_point=set_point, offset=offset,
+                                          away_temp=away_temp)
             self.devs = parsed
 
     def temp(self):
@@ -53,7 +56,7 @@ class CLI:
         client.on_message = on_message
 
         client.username_pw_set("mqtt", "0Bwz3sw6ekuYvYzDrTnE")
-        client.connect("192.168.1.6", 1883, 60)
+        client.connect("192.168.1.3", 1883, 60)
 
         client.loop_forever()
 

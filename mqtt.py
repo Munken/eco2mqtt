@@ -2,6 +2,7 @@ import paho.mqtt.client as mqtt
 from thermostat import Thermostat
 
 from loguru import logger
+import json
 
 
 class A:
@@ -42,10 +43,10 @@ class MqttThermostat:
         # base = "munk/etrv"
 
         self.pub = {
-            # "away_state":   "away_mode/state",
-            # "mode_state":   "mode/state",
-            # "temp_state":   "temp/state",
-            # "temp_cur":     "temp/current",
+            "away_state":   "away_mode/state",
+            "mode_state":   "mode/state",
+            "temp_state":   "temp/state",
+            "temp_cur":     "temp/current",
         }
 
         self.sub = {
@@ -61,12 +62,6 @@ class MqttThermostat:
         for key, val in self.pub.items():
             self.pub[key] = "{}/{}".format(base, val)
 
-        import pprint
-        print("sub")
-        pprint.pprint(self.sub)
-        print("pub")
-        pprint.pprint(self.pub)
-
     def _on_connect(self, client, userdata, flags, rc):
         logger.info("{} connect", self.thermostat.addr)
 
@@ -75,17 +70,73 @@ class MqttThermostat:
             client.message_callback_add(
                 topic,
                 # Note the default value capture. See https://stackoverflow.com/a/2295372
-                lambda _, userdata, message, f=f: f(userdata, message)
+                lambda client, userdata, message, f=f: f(client, message)
             )
 
-    def _on_away_command(self, userdata, message):
-        logger.debug("away")
+        self._publish_autodiscory(client)
 
-    def _on_mode_command(self, userdata, message):
-        logger.debug("mode")
+    def _on_away_command(self, client, message):
+        logger.debug("away {}", message.payload)
 
-    def _on_temp_command(self, userdata, message):
-        logger.debug("tcmd")
+        s = message.payload.decode('ascii').lower()
 
-    def _on_temp_remote(self, userdata, message):
-        logger.debug("remote")
+        # if s == 'on':
+        #     self.thermostat.set_point = self.thermostat._away_temp
+
+    def _on_mode_command(self, client, message):
+        logger.debug("mode {}", message.payload)
+
+        # mode = message.payload.decode('ascii')
+
+    def _on_temp_command(self, client, message):
+        logger.debug("tcmd {}", message.payload)
+
+        t = float(message.payload.decode('ascii'))
+        # self.thermostat.set_point = t
+        self._publish_temp_state(client, t)
+
+    def _on_temp_remote(self, client, message):
+        logger.debug("remote {}", message.payload)
+
+        t = float(message.payload.decode('ascii'))
+        # self.thermostat.add_remote(t)
+        self._publish_temp_cur(client, t)
+
+    def _publish_temp_cur(self, client, temp):
+        self._publish(client, "temp_cur", str(temp))
+
+    def _publish_temp_state(self, client, temp):
+        self._publish(client, "temp_state", str(temp))
+
+    def _publish(self, client: mqtt.Client, key, payload):
+        client.publish(self.pub[key], payload=payload)
+
+    def _publish_autodiscory(self, client: mqtt.Client):
+        id = self.thermostat.addr.replace(':', '')
+        sub = "homeassistant/climate/{}/config".format(id)
+
+        initial = self.thermostat._set_point
+        discovery = {
+            "away_mode_command_topic":    self.sub["away_command"][0],
+            "away_mode_state_topic":      self.pub["away_state"],
+            "current_temperature_topic":  self.pub["temp_cur"],
+            "initial": initial,
+            "max_temp":                   30,
+            "min_temp":                    5,
+            "mode_command_topic":         self.sub["mode_command"][0],
+            "mode_state_topic":           self.pub["mode_state"],
+            "modes":                      ["heat", "off"],
+            "name":                       self.thermostat.name,
+            "temperature_command_topic":  self.sub["temp_command"][0],
+            "temperature_state_topic":    self.pub["temp_state"],
+            "temp_step":                  0.5
+        }
+
+        json_str = json.dumps(discovery)
+        logger.debug("Sending discovery to {}", sub)
+        logger.debug("Payload {}", json_str)
+        client.publish(sub)
+        client.publish(sub, json_str)
+
+        self._publish_temp_state(client, initial)
+        self._publish_temp_cur(client, initial)
