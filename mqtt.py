@@ -41,14 +41,6 @@ class MqttThermostat:
         self.id = thermostat.addr.replace(":", "")
 
         base = "munk/etrv/{}".format(self.id)
-        # base = "munk/etrv"
-
-        # self.pub = {
-        #     "away_state":   "away_mode/state",
-        #     "mode_state":   "mode/state",
-        #     "temp_state":   "temp/state",
-        #     "temp_cur":     "temp/current",
-        # }
 
         self.pub = "{}/state".format(base)
         self.state = {
@@ -67,9 +59,6 @@ class MqttThermostat:
 
         for key, (topic, f) in self.sub.items():
             self.sub[key] = ("{}/{}".format(base, topic), f)
-
-        # for key, val in self.pub.items():
-        #     self.pub[key] = "{}/{}".format(base, val)
 
     def _on_connect(self, client, userdata, flags, rc):
         logger.info("{} connect", self.thermostat.addr)
