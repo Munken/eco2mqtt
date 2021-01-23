@@ -143,7 +143,8 @@ class MqttThermostat:
             "temperature_command_topic":  self.sub["temp_command"][0],
             "temp_stat_t":                self.pub,
             "temp_stat_tpl":              '{{ value_json["target_temp"]}}',
-            "temp_step":                  0.5
+            "temp_step":                  0.5,
+            "unique_id": id,
         }
 
         json_str = json.dumps(discovery)
