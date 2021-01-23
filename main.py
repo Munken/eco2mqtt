@@ -28,13 +28,11 @@ class CLI:
                 name = thermo["name"]
                 addr = thermo["address"]
                 secret = bytes.fromhex(thermo["secret"])
-                set_point = float(thermo["set_point"])
+                set_point = thermo["set_point"]
                 offset = float(thermo["offset"])
-                away_temp = float(thermo["away_temp"])
 
                 parsed[addr] = Thermostat(name=name, addr=addr, secret=secret,
-                                          set_point=set_point, offset=offset,
-                                          away_temp=away_temp)
+                                          set_point=set_point, offset=offset)
             self.devs = parsed
 
     def temp(self):
