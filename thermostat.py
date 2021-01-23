@@ -13,7 +13,7 @@ class Thermostat:
 
     # __MODES = (HOME, AWAY, OFF)
 
-    def __init__(self, name, addr, secret, set_point, offset, away_temp, mode=HOME):
+    def __init__(self, name, addr, secret, set_point, offset, mode=HOME):
         self.secret = secret
         self.addr = addr
         self.name = name
@@ -24,12 +24,11 @@ class Thermostat:
         self._mode = mode
         self._set_point = set_point
         self._offset = offset
-        self._away_temp = away_temp
         self._last_change = time.time()
 
     @property
     def set_point(self):
-        return self.set_point[self._mode]
+        return self._set_point[self._mode]
 
     @set_point.setter
     def set_point(self, new):

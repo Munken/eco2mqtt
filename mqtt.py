@@ -43,12 +43,6 @@ class MqttThermostat:
         base = "munk/etrv/{}".format(self.id)
 
         self.pub = "{}/state".format(base)
-        self.state = {
-            "away_mode": "",
-            "mode": "heat",
-            "target_temp": self.thermostat._set_point,
-            "current_temp": self.thermostat._set_point,
-        }
 
         self.sub = {
             "away_command": ("away_mode/command", self._on_away_command),
@@ -76,18 +70,25 @@ class MqttThermostat:
     def _on_away_command(self, client, message):
         logger.debug("away {}", message.payload)
 
-        mode = message.payload.decode('ascii')
-        self.state["away_mode"] = mode
+        mode = message.payload.decode('ascii').lower()
 
-        # if s == 'on':
-        #     self.thermostat.set_point = self.thermostat._away_temp
+        if mode == 'on':
+            self.thermostat.mode = Thermostat.AWAY
+        elif mode == 'off':
+            self.thermostat.mode = Thermostat.HOME
+
         self._publish_state(client)
 
     def _on_mode_command(self, client, message):
         logger.debug("mode {}", message.payload)
 
-        mode = message.payload.decode('ascii')
-        self.state["mode"] = mode
+        mode = message.payload.decode('ascii').lower()
+
+        if mode == 'heat':
+            self.thermostat.mode = Thermostat.HOME
+        elif mode == 'off':
+            self.thermostat.mode = Thermostat.OFF
+
         self._publish_state(client)
 
     def _on_temp_command(self, client, message):
@@ -95,7 +96,6 @@ class MqttThermostat:
 
         t = float(message.payload.decode('ascii'))
         self.thermostat.set_point = t
-        self.state["target_temp"] = t
         self._publish_state(client)
 
     def _on_temp_remote(self, client, message):
@@ -103,11 +103,21 @@ class MqttThermostat:
 
         t = float(message.payload.decode('ascii'))
         self.thermostat.add_remote(t)
-        self.state["current_temp"] = t
         self._publish_state(client)
 
     def _publish_state(self, client: mqtt.Client):
-        client.publish(self.pub, payload=json.dumps(self.state), retain=True)
+
+        away = "ON" if self.thermostat.mode == Thermostat.AWAY else "OFF"
+        mode = "off" if self.thermostat.mode == Thermostat.OFF else "heat"
+
+        state = {
+            "away_mode": away,
+            "mode": mode,
+            "target_temp": self.thermostat.set_point,
+            "current_temp": self.thermostat.set_point,
+        }
+
+        client.publish(self.pub, payload=json.dumps(state), retain=True)
 
     def _publish(self, client: mqtt.Client, key, payload):
         client.publish(self.pub[key], payload=payload)
@@ -116,14 +126,13 @@ class MqttThermostat:
         id = self.thermostat.addr.replace(':', '')
         sub = "homeassistant/climate/{}/config".format(id)
 
-        initial = self.thermostat._set_point
         discovery = {
             "away_mode_command_topic":    self.sub["away_command"][0],
             "away_mode_state_topic":      self.pub,
             "away_mode_state_template":   '{{ value_json["away_mode"]}}',
             "curr_temp_t":                self.pub,
             "curr_temp_tpl":              '{{ value_json["current_temp"]}}',
-            "initial":                    initial,
+            "initial":                    self.thermostat.set_point,
             "max_temp":                   30,
             "min_temp":                    5,
             "mode_command_topic":         self.sub["mode_command"][0],
