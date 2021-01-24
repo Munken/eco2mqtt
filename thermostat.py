@@ -2,6 +2,8 @@ from libetrv.device import eTRVDevice
 import statistics
 import time
 
+from loguru import logger
+
 HOUR = 60 * 60
 
 
@@ -32,6 +34,11 @@ class Thermostat:
 
     @set_point.setter
     def set_point(self, new):
+
+        logger.debug("set_point = {:.1f} offset = {:.1}f sent = {:.1f}",
+                     new, self._offset, new + self._offset)
+
+        self._remote_t = []
         self._last_change = time.time()
         self._set_point[self._mode] = new
         self._device.temperature.set_point_temperature = new + self._offset
@@ -55,6 +62,8 @@ class Thermostat:
 
     @mode.setter
     def mode(self, m):
+        logger.debug("mode = {}", m)
+
         self._mode = m
         self.set_point = self._set_point[m]
 
@@ -67,6 +76,4 @@ class Thermostat:
 
             self._offset += 0.5
             self.set_point = self.set_point
-            self._last_change = now
-            self._remote_t = []
 
