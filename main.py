@@ -53,7 +53,7 @@ class CLI:
 
         devs = _load_settings(settings)
 
-        handlers = [MqttThermostat(t) for t in self.devs.values()]
+        handlers = [MqttThermostat(t) for t in devs.values()]
 
         client = mqtt.Client()
         client.user_data_set(handlers)
