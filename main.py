@@ -14,36 +14,44 @@ def on_connect(client, userdata, flags, rc):
     for a in userdata:
         a._on_connect(client, userdata, flags, rc)
 
+
 def on_message(client, userdata, msg):
     print("super" + msg.topic+" "+str(msg.payload))
 
+
+def _load_settings(settings):
+    with open(settings) as f:
+        raw = safe_load(f)
+
+        parsed = {}
+        for thermo in raw["thermostats"]:
+            name = thermo["name"]
+            addr = thermo["address"]
+            secret = bytes.fromhex(thermo["secret"])
+            set_point = thermo["set_point"]
+            offset = float(thermo["offset"])
+
+            parsed[addr] = Thermostat(name=name, addr=addr, secret=secret,
+                                      set_point=set_point, offset=offset)
+        return parsed
+
+
 class CLI:
 
-    def __init__(self, settings):
-        with open(settings) as f:
-            raw = safe_load(f)
+    def __init__(self):
+        pass
 
-            parsed = {}
-            for thermo in raw["thermostats"]:
-                name = thermo["name"]
-                addr = thermo["address"]
-                secret = bytes.fromhex(thermo["secret"])
-                set_point = thermo["set_point"]
-                offset = float(thermo["offset"])
+    # def temp(self):
+    #     for t in self.devs.values():
+    #         print(t.temperature)
+    #
+    # def set_point(self):
+    #     for t in self.devs.values():
+    #         print(t.set_point)
 
-                parsed[addr] = Thermostat(name=name, addr=addr, secret=secret,
-                                          set_point=set_point, offset=offset)
-            self.devs = parsed
+    def mqtt(self, settings):
 
-    def temp(self):
-        for t in self.devs.values():
-            print(t.temperature)
-
-    def set_point(self):
-        for t in self.devs.values():
-            print(t.set_point)
-
-    def battery(self):
+        devs = _load_settings(settings)
 
         handlers = [MqttThermostat(t) for t in self.devs.values()]
 
