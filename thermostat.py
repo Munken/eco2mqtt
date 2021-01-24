@@ -35,7 +35,7 @@ class Thermostat:
     @set_point.setter
     def set_point(self, new):
 
-        logger.debug("set_point = {:.1f} offset = {:.1}f sent = {:.1f}",
+        logger.debug("set_point = {:.1f} offset = {:.1f} sent = {:.1f}",
                      new, self._offset, new + self._offset)
 
         self._remote_t = []
