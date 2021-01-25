@@ -30,9 +30,11 @@ def _load_settings(settings):
             secret = bytes.fromhex(thermo["secret"])
             set_point = thermo["set_point"]
             offset = float(thermo["offset"])
+            remote_topic = thermo.get("remote")
 
             parsed[addr] = Thermostat(name=name, addr=addr, secret=secret,
-                                      set_point=set_point, offset=offset)
+                                      set_point=set_point, offset=offset,
+                                      remote_topic=remote_topic)
         return parsed
 
 

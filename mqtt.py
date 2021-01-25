@@ -48,7 +48,7 @@ class MqttThermostat:
             "away_command": ("away_mode/command", self._on_away_command),
             "mode_command": ("mode/command", self._on_mode_command),
             "temp_command": ("temp/command", self._on_temp_command),
-            "temp_remote":  ("temp/remote", self._on_temp_remote),
+            # "temp_remote":  ("temp/remote", self._on_temp_remote),
         }
 
         for key, (topic, f) in self.sub.items():
@@ -62,7 +62,13 @@ class MqttThermostat:
             client.message_callback_add(
                 topic,
                 # Note the default value capture. See https://stackoverflow.com/a/2295372
-                lambda client, userdata, message, f=f: f(client, message)
+                lambda c, _, message, f=f: f(c, message)
+            )
+
+        if self.thermostat.remote_sensor_topic:
+            client.message_callback_add(
+                self.thermostat.remote_sensor_topic,
+                lambda c, _, message: self._on_temp_remote(c, message)
             )
 
         self._publish_autodiscory(client)
@@ -114,7 +120,7 @@ class MqttThermostat:
             "away_mode": away,
             "mode": mode,
             "target_temp": self.thermostat.set_point,
-            "current_temp": self.thermostat.set_point,
+            "current_temp": self.thermostat.remote,
         }
 
         client.publish(self.pub, payload=json.dumps(state), retain=True)

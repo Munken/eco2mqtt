@@ -15,7 +15,8 @@ class Thermostat:
 
     # __MODES = (HOME, AWAY, OFF)
 
-    def __init__(self, name, addr, secret, set_point, offset, mode=HOME):
+    def __init__(self, name, addr, secret, set_point, offset, mode=HOME, remote_topic=None):
+        self.remote_sensor_topic = remote_topic
         self.secret = secret
         self.addr = addr
         self.name = name
@@ -38,7 +39,7 @@ class Thermostat:
         logger.debug("{} set_point = {:.1f} offset = {:.1f} sent = {:.1f}",
                      self.name, new, self._offset, new + self._offset)
 
-        self._remote_t = []
+        self._remote_t = [self._remote_t[-1]] if self._has_remote() else []
         self._last_change = time.time()
         self._set_point[self._mode] = new
         self._device.temperature.set_point_temperature = new + self._offset
@@ -67,13 +68,26 @@ class Thermostat:
         self._mode = m
         self.set_point = self._set_point[m]
 
+    @property
+    def remote(self):
+        return self._remote_t[-1] if self._has_remote() else self.set_point
+
+    def _has_remote(self):
+        return len(self._remote_t) > 0
+
     def add_remote(self, temp):
         self._remote_t.append(temp)
 
         now = time.time()
-        if (now - self._last_change > 1*HOUR and
-                statistics.mean(self._remote_t) - self.set_point > 1):
+        if now - self._last_change > 1*HOUR:
+            diff = statistics.mean(self._remote_t) - self.set_point
+            delta = 0
+            if diff >= 1.:
+                delta = 0.5
+            elif diff <= -1.:
+                delta = -0.5
 
-            self._offset += 0.5
-            self.set_point = self.set_point
+            if delta != 0:
+                self._offset += delta
+                self.set_point = self.set_point
 
