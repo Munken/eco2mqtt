@@ -150,8 +150,8 @@ class MqttThermostat:
         json_str = json.dumps(discovery)
         logger.debug("Sending discovery to {}", sub)
         logger.debug("Payload {}", json_str)
-        client.publish(sub)
-        client.publish(sub, json_str)
+        # client.publish(sub)
+        client.publish(sub, json_str, retain=True)
 
         self._publish_state(client)
 
