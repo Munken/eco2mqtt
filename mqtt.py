@@ -111,6 +111,8 @@ class MqttThermostat:
         try:
             t = float(t_str)
             self.thermostat.add_remote(t)
+        except Exception as e:
+            logger.error(e)
         finally:
             self._publish_state(client)
 
