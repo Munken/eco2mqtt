@@ -97,7 +97,7 @@ class Thermostat:
                 elif diff <= -1.:
                     delta = 0.5
 
-                logger.debug("{}: mean={} diff={} delta={} offset={}", mean, diff, delta, self._offset)
+                logger.debug("{}: mean={} diff={} delta={} offset={}", self.name, mean, diff, delta, self._offset)
 
                 if delta != 0:
                     self._offset += delta
