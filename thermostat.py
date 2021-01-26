@@ -80,20 +80,24 @@ class Thermostat:
         return len(self._remote_t) > 0
 
     def add_remote(self, temp):
+        change = (time.time() - self._last_change) / HOUR
+        logger.debug("{}: remote T={} mode={} change={}", self.name, temp, self.mode, change)
         if self.mode != Thermostat.HOME:
             self._remote_t = [temp]
         else:
             self._remote_t.append(temp)
 
-            now = time.time()
-            if now - self._last_change > 1*HOUR:
-                diff = statistics.mean(self._remote_t) - self.set_point
+            if change > 1:
+                mean = statistics.mean(self._remote_t)
+                diff = mean - self.set_point
 
                 delta = 0
                 if diff >= 1.:
                     delta = -0.5
                 elif diff <= -1.:
                     delta = 0.5
+
+                logger.debug("{}: mean={} diff={} delta={} offset={}", mean, diff, delta, self._offset)
 
                 if delta != 0:
                     self._offset += delta
