@@ -74,7 +74,7 @@ class MqttThermostat:
         self._publish_autodiscory(client)
 
     def _on_away_command(self, client, message):
-        logger.debug("away {}", message.payload)
+        logger.debug("{}: away {}", self.thermostat.name, message.payload)
 
         mode = message.payload.decode('ascii').lower()
 
@@ -86,7 +86,7 @@ class MqttThermostat:
         self._publish_state(client)
 
     def _on_mode_command(self, client, message):
-        logger.debug("mode {}", message.payload)
+        logger.debug("{}: mode {}", self.thermostat.name, message.payload)
 
         mode = message.payload.decode('ascii').lower()
 
@@ -98,14 +98,14 @@ class MqttThermostat:
         self._publish_state(client)
 
     def _on_temp_command(self, client, message):
-        logger.debug("tcmd {}", message.payload)
+        logger.debug("{}: tcmd {}", self.thermostat.name, message.payload)
 
         t = float(message.payload.decode('ascii'))
         self.thermostat.set_point = t
         self._publish_state(client)
 
     def _on_temp_remote(self, client, message):
-        logger.debug("remote {}", message.payload)
+        logger.debug("{}: remote {}", self.thermostat.name, message.payload)
 
         t_str = message.payload.decode('ascii')
         try:
