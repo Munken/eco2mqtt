@@ -1,11 +1,13 @@
 #!/usr/bin/env python
 
 import fire
+import time
 from yaml import safe_load
 from thermostat import Thermostat
 from mqtt import MqttThermostat
 import paho.mqtt.client as mqtt
 
+HOUR = 60*60
 
 def on_connect(client, userdata, flags, rc):
     print("Connected with result code "+str(rc))
@@ -66,7 +68,16 @@ class CLI:
         client.username_pw_set("mqtt", "0Bwz3sw6ekuYvYzDrTnE")
         client.connect("192.168.1.3", 1883, 60)
 
-        client.loop_forever()
+        last_battery_update = 0
+        while True:
+            client.loop(timeout=10)
+
+            now = time.time()
+            if now - last_battery_update > 12*HOUR:
+                for h in handlers:
+                    h.update_battery()
+                    client.loop()
+                last_battery_update = now
 
 
 if __name__ == "__main__":

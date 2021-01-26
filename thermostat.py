@@ -21,7 +21,7 @@ class Thermostat:
         self.addr = addr
         self.name = name
 
-        self._device = eTRVDevice(addr, secret)
+        self._device = eTRVDevice(addr, secret, retry_limit=3)
 
         self._remote_t = []
         self._mode = mode

@@ -40,6 +40,8 @@ class MqttThermostat:
     def __init__(self, thermostat: Thermostat):
         self.thermostat = thermostat
         self.id = thermostat.addr.replace(":", "")
+        self._battery = None
+        self.client = None
 
         base = "munk/etrv/{}".format(self.id)
 
@@ -58,6 +60,8 @@ class MqttThermostat:
     def _on_connect(self, client, userdata, flags, rc):
         logger.info("{} connect", self.thermostat.addr)
 
+        self.client = client
+
         for topic, f in self.sub.values():
             logger.debug("Subscribing to {} {}", topic, f)
             client.message_callback_add(
@@ -72,7 +76,7 @@ class MqttThermostat:
                 lambda c, _, message: self._on_temp_remote(c, message)
             )
 
-        self._publish_autodiscory(client)
+        self._publish_autodiscory()
 
     def _on_away_command(self, client, message):
         logger.debug("{}: away {}", self.thermostat.name, message.payload)
@@ -84,7 +88,7 @@ class MqttThermostat:
         elif mode == 'off':
             self.thermostat.mode = Thermostat.HOME
 
-        self._publish_state(client)
+        self._publish_state()
 
     def _on_mode_command(self, client, message):
         logger.debug("{}: mode {}", self.thermostat.name, message.payload)
@@ -96,14 +100,14 @@ class MqttThermostat:
         elif mode == 'off':
             self.thermostat.mode = Thermostat.OFF
 
-        self._publish_state(client)
+        self._publish_state()
 
     def _on_temp_command(self, client, message):
         logger.debug("{}: tcmd {}", self.thermostat.name, message.payload)
 
         t = float(message.payload.decode('ascii'))
         self.thermostat.set_point = t
-        self._publish_state(client)
+        self._publish_state()
 
     def _on_temp_remote(self, client, message):
         logger.debug("{}: remote {}", self.thermostat.name, message.payload)
@@ -115,9 +119,9 @@ class MqttThermostat:
         except Exception as e:
             logger.error(e)
         finally:
-            self._publish_state(client)
+            self._publish_state()
 
-    def _publish_state(self, client: mqtt.Client):
+    def _publish_state(self):
 
         away = "ON" if self.thermostat.mode == Thermostat.AWAY else "OFF"
         mode = "off" if self.thermostat.mode == Thermostat.OFF else "heat"
@@ -128,15 +132,17 @@ class MqttThermostat:
             "target_temp": self.thermostat.set_point,
             "current_temp": self.thermostat.remote,
             "offset": self.thermostat.offset,
-            "battery": 50.
+            "battery": self._battery
         }
 
-        client.publish(self.pub, payload=json.dumps(state), retain=True)
+        self._publish(self.pub, payload=json.dumps(state), retain=True)
 
-    def _publish(self, client: mqtt.Client, key, payload):
-        client.publish(self.pub[key], payload=payload)
+    def _publish(self, topic, payload=None, qos=0, retain=False, properties=None):
+        if self.client:
+            self.client.publish(topic=topic, payload=payload, qos=qos,
+                                retain=retain, properties=properties)
 
-    def _publish_autodiscory(self, client: mqtt.Client):
+    def _publish_autodiscory(self):
         id = self.thermostat.addr.replace(':', '')
         # sub = "homeassistant/climate/{}/config".format(id)
 
@@ -204,7 +210,11 @@ class MqttThermostat:
             logger.debug("Sending discovery to {}", sub)
             logger.debug("Payload {}", payload)
             #
-            client.publish(sub, payload, retain=True)
+            self.client.publish(sub, payload, retain=True)
 
-        self._publish_state(client)
+        self._publish_state()
+
+    def update_battery(self):
+        self._battery = self.thermostat.battery
+        self._publish_state()
 
