@@ -107,9 +107,12 @@ class MqttThermostat:
     def _on_temp_remote(self, client, message):
         logger.debug("remote {}", message.payload)
 
-        t = float(message.payload.decode('ascii'))
-        self.thermostat.add_remote(t)
-        self._publish_state(client)
+        t_str = message.payload.decode('ascii')
+        try:
+            t = float(t_str)
+            self.thermostat.add_remote(t)
+        finally:
+            self._publish_state(client)
 
     def _publish_state(self, client: mqtt.Client):
 
