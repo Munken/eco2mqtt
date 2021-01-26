@@ -72,6 +72,10 @@ class Thermostat:
     def remote(self):
         return self._remote_t[-1] if self._has_remote() else self.set_point
 
+    @property
+    def offset(self):
+        return self._offset
+
     def _has_remote(self):
         return len(self._remote_t) > 0
 

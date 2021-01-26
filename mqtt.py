@@ -126,6 +126,7 @@ class MqttThermostat:
             "mode": mode,
             "target_temp": self.thermostat.set_point,
             "current_temp": self.thermostat.remote,
+            "offset": self.thermostat.offset
         }
 
         client.publish(self.pub, payload=json.dumps(state), retain=True)
