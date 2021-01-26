@@ -1,3 +1,4 @@
+import socket
 import paho.mqtt.client as mqtt
 from thermostat import Thermostat
 
@@ -138,12 +139,21 @@ class MqttThermostat:
         id = self.thermostat.addr.replace(':', '')
         sub = "homeassistant/climate/{}/config".format(id)
 
+        device = {
+            "identifiers": id,
+            "manufacturer": "Danfoss",
+            "model": "Eco2",
+            "name": self.thermostat.name,
+            "via_device": socket.gethostname()
+        }
+
         discovery = {
             "away_mode_command_topic":    self.sub["away_command"][0],
             "away_mode_state_topic":      self.pub,
             "away_mode_state_template":   '{{ value_json["away_mode"]}}',
             "curr_temp_t":                self.pub,
             "curr_temp_tpl":              '{{ value_json["current_temp"]}}',
+            "device":                     device,
             "initial":                    self.thermostat.set_point,
             "max_temp":                   30,
             "min_temp":                    5,
