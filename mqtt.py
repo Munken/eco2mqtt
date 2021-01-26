@@ -127,7 +127,8 @@ class MqttThermostat:
             "mode": mode,
             "target_temp": self.thermostat.set_point,
             "current_temp": self.thermostat.remote,
-            "offset": self.thermostat.offset
+            "offset": self.thermostat.offset,
+            "battery": 50.
         }
 
         client.publish(self.pub, payload=json.dumps(state), retain=True)
@@ -137,7 +138,7 @@ class MqttThermostat:
 
     def _publish_autodiscory(self, client: mqtt.Client):
         id = self.thermostat.addr.replace(':', '')
-        sub = "homeassistant/climate/{}/config".format(id)
+        # sub = "homeassistant/climate/{}/config".format(id)
 
         device = {
             "identifiers": id,
@@ -147,13 +148,12 @@ class MqttThermostat:
             "via_device": socket.gethostname()
         }
 
-        discovery = {
+        discover_climate = {
             "away_mode_command_topic":    self.sub["away_command"][0],
             "away_mode_state_topic":      self.pub,
             "away_mode_state_template":   '{{ value_json["away_mode"]}}',
             "curr_temp_t":                self.pub,
             "curr_temp_tpl":              '{{ value_json["current_temp"]}}',
-            "device":                     device,
             "initial":                    self.thermostat.set_point,
             "max_temp":                   30,
             "min_temp":                    5,
@@ -166,14 +166,45 @@ class MqttThermostat:
             "temp_stat_t":                self.pub,
             "temp_stat_tpl":              '{{ value_json["target_temp"]}}',
             "temp_step":                  0.5,
-            "unique_id": id,
         }
 
-        json_str = json.dumps(discovery)
-        logger.debug("Sending discovery to {}", sub)
-        logger.debug("Payload {}", json_str)
-        # client.publish(sub)
-        client.publish(sub, json_str, retain=True)
+        discover_battery = {
+            "device_class":   "battery",
+            "name":           "{} battery".format(self.thermostat.name),
+            "state_topic":    self.pub,
+            "value_template": '{{ value_json["battery"]}}',
+            "unit_of_measurement": "%"
+        }
+
+        discover_offset = {
+            "device_class":   "temperature",
+            "name":           "{} offset".format(self.thermostat.name),
+            "state_topic":    self.pub,
+            "value_template": '{{ value_json["offset"]}}',
+            "unit_of_measurement": "°C"
+        }
+
+        discoveries = (
+            (discover_climate, "climate", "climate"),
+            (discover_battery, "battery", "sensor"),
+            (discover_offset,  "offset",  "sensor")
+        )
+
+        for specific, name, typ in discoveries:
+
+            uid = "{}-{}".format(id, name)
+            d = {
+                "device": device,
+                "unique_id": uid
+            }
+            d.update(specific)
+
+            payload = json.dumps(d)
+            sub = "homeassistant/{type}/{id}/config".format(type=typ, id=uid)
+            logger.debug("Sending discovery to {}", sub)
+            logger.debug("Payload {}", payload)
+            #
+            client.publish(sub, payload, retain=True)
 
         self._publish_state(client)
 
