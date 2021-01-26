@@ -81,7 +81,7 @@ class Thermostat:
 
     def add_remote(self, temp):
         change = (time.time() - self._last_change) / HOUR
-        logger.debug("{}: remote T={} mode={} change={}", self.name, temp, self.mode, change)
+        logger.debug("{}: remote T={} mode={} change={:.2f}", self.name, temp, self.mode, change)
         if self.mode != Thermostat.HOME:
             self._remote_t = [temp]
         else:
