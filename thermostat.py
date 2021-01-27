@@ -51,6 +51,8 @@ class Thermostat:
                 diff = d
                 mode = m
 
+        self._disconnect()
+
         return mode
 
     @property
@@ -67,13 +69,16 @@ class Thermostat:
         self._set_points[self._mode] = new
         self._device.temperature.set_point_temperature = new + self._offset
         self._ensure_battery_updated()
-        self._device.disconnect()
+        self._disconnect()
 
     @property
     def temperature(self):
         t = self._device.temperature.room_temperature
-        self._device.disconnect()
+        self._disconnect()
         return t
+
+    def _disconnect(self):
+        self._device.disconnect()
 
     @property
     def battery(self):
@@ -86,6 +91,7 @@ class Thermostat:
                 now - self._last_battery_check > 12*HOUR):
             self._battery = self._device.battery
             self._last_battery_check = now
+            self._disconnect()
 
         return self._battery
 
