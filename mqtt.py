@@ -132,7 +132,7 @@ class MqttThermostat:
             "target_temp": self.thermostat.set_point,
             "current_temp": self.thermostat.remote,
             "offset": self.thermostat.offset,
-            "battery": self._battery
+            "battery": self.thermostat.battery
         }
 
         self._publish(self.pub, payload=json.dumps(state), retain=True)
@@ -212,9 +212,5 @@ class MqttThermostat:
             #
             self.client.publish(sub, payload, retain=True)
 
-        self._publish_state()
-
-    def update_battery(self):
-        self._battery = self.thermostat.battery
         self._publish_state()
 
