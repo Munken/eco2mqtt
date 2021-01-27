@@ -21,7 +21,7 @@ def on_message(client, userdata, msg):
     print("super" + msg.topic+" "+str(msg.payload))
 
 
-def _load_settings(settings):
+def _load_settings(settings, guess_mode):
     with open(settings) as f:
         raw = safe_load(f)
 
@@ -35,8 +35,8 @@ def _load_settings(settings):
             remote_topic = thermo.get("remote")
 
             parsed[addr] = Thermostat(name=name, addr=addr, secret=secret,
-                                      set_point=set_point, offset=offset,
-                                      remote_topic=remote_topic)
+                                      set_points=set_point, offset=offset,
+                                      remote_topic=remote_topic, guess_mode=guess_mode)
         return parsed
 
 
@@ -53,9 +53,9 @@ class CLI:
     #     for t in self.devs.values():
     #         print(t.set_point)
 
-    def mqtt(self, settings):
+    def mqtt(self, settings, guess_mode=True):
 
-        devs = _load_settings(settings)
+        devs = _load_settings(settings, guess_mode)
 
         handlers = [MqttThermostat(t) for t in devs.values()]
 
@@ -68,16 +68,7 @@ class CLI:
         client.username_pw_set("mqtt", "0Bwz3sw6ekuYvYzDrTnE")
         client.connect("192.168.1.3", 1883, 60)
 
-        last_battery_update = 0
-        while True:
-            client.loop(timeout=10)
-
-            now = time.time()
-            if now - last_battery_update > 12*HOUR:
-                for h in handlers:
-                    h.update_battery()
-                    client.loop()
-                last_battery_update = now
+        client.loop_forever()
 
 
 if __name__ == "__main__":

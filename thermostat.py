@@ -15,7 +15,7 @@ class Thermostat:
 
     # __MODES = (HOME, AWAY, OFF)
 
-    def __init__(self, name, addr, secret, set_point, offset, mode=HOME, remote_topic=None):
+    def __init__(self, name, addr, secret, set_points, offset, guess_mode=True, mode=None, remote_topic=None):
         self.remote_sensor_topic = remote_topic
         self.secret = secret
         self.addr = addr
@@ -24,25 +24,49 @@ class Thermostat:
         self._device = eTRVDevice(addr, secret, retry_limit=3)
 
         self._remote_t = []
-        self._mode = mode
-        self._set_point = set_point
+        self._set_points = set_points
         self._offset = offset
         self._last_change = time.time()
 
+        self._last_battery_check = 0
+        self._battery = None
+
+        if not guess_mode and mode is None:
+            raise ValueError("Not guessing mode and no mode is given")
+
+        if guess_mode:
+            self._mode = self._guess_mode()
+        else:
+            self._mode = mode
+
+    def _guess_mode(self):
+        t = self._device.temperature.set_point_temperature
+        diff = 1000.
+        mode = None
+        logger.debug("Guessing mode for {}. Current set point {:.1f}", self.name, t)
+        for m, setp in self._set_points.items():
+            d = abs(t - (setp + self._offset))
+            logger.debug("  {} => {:.2f}", m, d)
+            if d < diff:
+                diff = d
+                mode = m
+
+        return mode
+
     @property
     def set_point(self):
-        return self._set_point[self._mode]
+        return self._set_points[self._mode]
 
     @set_point.setter
     def set_point(self, new):
-
         logger.debug("{} set_point = {:.1f} offset = {:.1f} sent = {:.1f}",
                      self.name, new, self._offset, new + self._offset)
 
         self._remote_t = [self._remote_t[-1]] if self._has_remote() else []
         self._last_change = time.time()
-        self._set_point[self._mode] = new
+        self._set_points[self._mode] = new
         self._device.temperature.set_point_temperature = new + self._offset
+        self._ensure_battery_updated()
         self._device.disconnect()
 
     @property
@@ -53,9 +77,17 @@ class Thermostat:
 
     @property
     def battery(self):
-        battery = self._device.battery
-        self._device.disconnect()
-        return battery
+        self._ensure_battery_updated()
+        return self._battery
+
+    def _ensure_battery_updated(self):
+        now = time.time()
+        if (self._battery is None or
+                now - self._last_battery_check > 12*HOUR):
+            self._battery = self._device.battery
+            self._last_battery_check = now
+
+        return self._battery
 
     @property
     def mode(self):
@@ -66,7 +98,7 @@ class Thermostat:
         logger.debug("{}: mode = {}", self.name, m)
 
         self._mode = m
-        self.set_point = self._set_point[m]
+        self.set_point = self._set_points[m]
 
     @property
     def remote(self):
