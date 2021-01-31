@@ -64,10 +64,12 @@ class Thermostat:
         logger.debug("{} set_point = {:.1f} offset = {:.1f} sent = {:.1f}",
                      self.name, new, self._offset, new + self._offset)
 
+        offset = self._offset if self._mode == Thermostat.HOME else 0
+
         self._remote_t = [self._remote_t[-1]] if self._has_remote() else []
         self._last_change = time.time()
         self._set_points[self._mode] = new
-        self._device.temperature.set_point_temperature = new + self._offset
+        self._device.temperature.set_point_temperature = new + offset
         self._ensure_battery_updated()
         self._disconnect()
 
