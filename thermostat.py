@@ -66,12 +66,15 @@ class Thermostat:
 
         offset = self._offset if self._mode == Thermostat.HOME else 0
 
-        self._remote_t = [self._remote_t[-1]] if self._has_remote() else []
-        self._last_change = time.time()
+        self._reset_remote()
         self._set_points[self._mode] = new
         self._device.temperature.set_point_temperature = new + offset
         self._ensure_battery_updated()
         self._disconnect()
+
+    def _reset_remote(self):
+        self._remote_t = [self._remote_t[-1]] if self._has_remote() else []
+        self._last_change = time.time()
 
     @property
     def temperature(self):
@@ -148,4 +151,6 @@ class Thermostat:
                         self._offset = 0
 
                     self.set_point = self.set_point
+                else:
+                    self._reset_remote()
 
