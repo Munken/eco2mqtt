@@ -145,7 +145,7 @@ class Thermostat:
                 if delta != 0:
                     self._offset += delta
 
-                    if self._offset > 3:
+                    if self._offset > 4:
                         self._offset = 4
                     elif self._offset < 0:
                         self._offset = 0
